@@ -1,0 +1,55 @@
+<div class="jumbotron col-6 offset-3" *ngIf="gameList">
+  <h1 class="display-4">Lobby</h1>
+  <a class="btn btn-dark my-2 col-6" href="start" role="button">Host a game</a>
+  <p class="lead">
+    Or
+  </p>
+  <p class="lead">
+    Select a game from the list to join.
+  </p>
+  <form
+    *ngIf="
+      selectedGame && selectedGame.currentPlayers < selectedGame.maxPlayers
+    "
+    [formGroup]="joinForm"
+  >
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Name</span>
+      </div>
+      <input formControlName="name" type="text" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Buy-In</span>
+      </div>
+      <input formControlName="buyIn" type="number" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Password</span>
+      </div>
+      <input formControlName="password" type="password" class="form-control" />
+    </div>
+    <button (click)="submitJoin()" type="button" class="btn btn-dark mt-2">
+      Join {{ selectedGame.name }}
+    </button>
+  </form>
+  <hr class="my-4" />
+  <table class="table table-hover table-dark">
+    <thead>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Players</th>
+        <th scope="col">Blinds</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let game of gameList" (click)="selectGame(game)">
+        <td>{{ game.name }}</td>
+        <td>{{ game.currentPlayers + "/" + game.maxPlayers }}</td>
+        <td>{{ game.smallBlind + "/" + game.bigBlind }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

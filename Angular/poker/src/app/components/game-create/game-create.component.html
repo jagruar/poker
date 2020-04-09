@@ -1,0 +1,54 @@
+<div class="jumbotron col-6 offset-3">
+  <h1 class="display-4">Host a game</h1>
+  <a class="btn btn-dark my-2 col-6" href="" role="button">Back to lobby</a>
+  <p class="lead">
+    Configure your game settings below.
+  </p>
+  <form [formGroup]="form">
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Game Name</span>
+      </div>
+      <input formControlName="name" type="text" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Password</span>
+      </div>
+      <input formControlName="password" type="text" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Max Players</span>
+      </div>
+      <input formControlName="maxPlayers" type="number" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Your Name</span>
+      </div>
+      <input formControlName="adminName" type="text" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Your Buy-in</span>
+      </div>
+      <input formControlName="adminBuyIn" type="number" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Small Blind</span>
+      </div>
+      <input formControlName="smallBlind" type="number" class="form-control" />
+    </div>
+    <div class="input-group">
+      <div class="input-group-prepend">
+        <span class="input-group-text">Big Blind</span>
+      </div>
+      <input formControlName="bigBlind" type="number" class="form-control" />
+    </div>
+    <button (click)="createGame()" type="button" class="btn btn-dark mt-2">
+      Create Game
+    </button>
+  </form>
+</div>
