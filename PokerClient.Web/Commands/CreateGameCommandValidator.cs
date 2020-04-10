@@ -1,15 +1,18 @@
 ﻿using FluentValidation;
+using PokerClient.Interfaces;
+using System.Linq;
 
 namespace PokerClient.Web.Commands
 {
     public class CreateGameCommandValidator : AbstractValidator<CreateGameCommand>
     {
-        public CreateGameCommandValidator()
+        public CreateGameCommandValidator(IGameRepository gameRepository)
         {
             RuleFor(x => x.AdminName).NotEmpty().WithMessage("Admin name required");
             RuleFor(x => x.Name).NotEmpty().WithMessage("Name required");
             RuleFor(x => x.Name).MinimumLength(3).WithMessage("Name must be at least 3 characters long");
             RuleFor(x => x.Name).MaximumLength(20).WithMessage("Name must be at most 20 characters long");
+            RuleFor(x => x.Name).Must(x => !gameRepository.GetGames().Any(y => y.Name == x)).WithMessage("There is already a game with this name");
             RuleFor(x => x.Password).NotEmpty().WithMessage("Password required");
             RuleFor(x => x.AdminBuyIn).NotNull().WithMessage("Admin buy in required");
             RuleFor(x => x.MaxPlayers).NotNull().WithMessage("Max players required");

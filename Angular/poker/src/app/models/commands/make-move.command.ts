@@ -1,3 +1,3 @@
 export interface MakeMoveCommand {
-    amount: number;
+    amount?: number;
 }

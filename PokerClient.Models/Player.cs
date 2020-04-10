@@ -73,10 +73,14 @@ namespace PokerClient.Models
             this.RoundStatus = PlayerRoundStatus.Checked;
         }
 
-        public void CollectBets()
+        public void EndRound()
         {
             TotalAmountBet += AmountBet;
             AmountBet = 0;
+            if (RoundStatus != PlayerRoundStatus.AllIn && RoundStatus != PlayerRoundStatus.Folded)
+            {
+                RoundStatus = PlayerRoundStatus.YetToBet;
+            }
         }
 
         public void AwardWinnings(int amount)

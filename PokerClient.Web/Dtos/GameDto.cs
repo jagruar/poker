@@ -10,6 +10,7 @@ namespace PokerClient.Web.Dtos
         public int MyProperty { get; set; }
         public int SmallBlind { get; set; }
         public int BigBlind { get; set; }
+        public int MinimumMoveAmount { get; set; }
         public int MinimumBetIncrement { get; set; }
         public int DealerSeatNumber { get; set; }
         public int SmallBlindSeatNumber { get; set; }

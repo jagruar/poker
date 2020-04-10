@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
+using PokerClient.Implementation;
+using PokerClient.Interfaces;
 using PokerClient.Web.Commands;
 using PokerClient.Web.Hubs;
 using PokerClient.Web.Profiles;
@@ -73,6 +75,8 @@ namespace PokerClient.Web
             });
 
             services.AddAutoMapper(Assembly.GetAssembly(typeof(GameProfile)));
+
+            services.AddSingleton<IGameRepository, GameRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -96,6 +100,7 @@ namespace PokerClient.Web
             {
                 endpoints.MapControllers();
                 endpoints.MapHub<GameHub>("hubs/game");
+                endpoints.MapHub<LobbyHub>("hubs/lobby");
             });
         }
     }

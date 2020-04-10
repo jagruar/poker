@@ -8,6 +8,7 @@ export interface Game {
     myProperty: number;
     smallBlind: number;
     bigBlind: number;
+    minimumMoveAmount: number;
     minimumBetIncrement: number;
     dealerSeatNumber: number;
     smallBlindSeatNumber: number;

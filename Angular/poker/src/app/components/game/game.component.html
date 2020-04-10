@@ -1,14 +1,140 @@
-<button (click)="post()">POSTSTST</button>
-<div class="fixed-bottom d-flex">
-  <div class="d-flex" *ngIf="player">
-    <img
-      *ngFor="let card of player.cards"
-      class="card"
-      [src]="'assets/img/cards/' + card.value + '.png'"
-    />
+<ng-container *ngIf="game">
+  <div class="row">
+    <div class="col-8">
+      <button (click)="post()">Start game</button>
+      <p class="text-light" *ngIf="game">
+        Min Bet Increment: {{ game.minimumBetIncrement }}
+      </p>
+      <p class="text-light">Min Move Amount: {{ game.minimumMoveAmount }}</p>
+      <p class="text-light">Round: {{ game.bettingRound }}</p>
+      <p class="text-light">Next Seat: {{ game.nextSeatNumber }}</p>
+      <p class="text-light">Pot: {{ game.pot }}</p>
+      <div class="d-flex">
+        <img
+          class="card"
+          [src]="
+            game.flop.length > 0
+              ? 'assets/img/cards/' + game.flop[0].value + '.png'
+              : 'assets/img/cards/red_back.png'
+          "
+        />
+        <img
+          class="card"
+          [src]="
+            game.flop.length > 0
+              ? 'assets/img/cards/' + game.flop[1].value + '.png'
+              : 'assets/img/cards/red_back.png'
+          "
+        />
+        <img
+          class="card"
+          [src]="
+            game.flop.length > 0
+              ? 'assets/img/cards/' + game.flop[2].value + '.png'
+              : 'assets/img/cards/red_back.png'
+          "
+        />
+        <img
+          class="card"
+          [src]="
+            game.turn
+              ? 'assets/img/cards/' + game.turn.value + '.png'
+              : 'assets/img/cards/red_back.png'
+          "
+        />
+        <img
+          class="card"
+          [src]="
+            game.river
+              ? 'assets/img/cards/' + game.river.value + '.png'
+              : 'assets/img/cards/red_back.png'
+          "
+        />
+      </div>
+    </div>
+    <div class="col-4 bg-light">
+      <div *ngFor="let player of players">
+        <div *ngIf="player">
+          <p>{{ player.name }}</p>
+          <p>Amount bet: {{ player.amountBet }}</p>
+          <p>Balance: {{ player.balance }}</p>
+        </div>
+        <div *ngIf="!player">
+          <p>Empty Seat</p>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="controls">
-    <p *ngIf="isPlayersTurn" class="text-light">Its your turn</p>
-    <p *ngIf="!isPlayersTurn" class="text-light">Its not your turn</p>
+  <div class="fixed-bottom d-flex">
+    <div>
+      <p class="text-light">Balance: {{ player.balance }}</p>
+      <p class="text-light">Amount Bet: {{ player.amountBet }}</p>
+      <p class="text-light">Total Bet: {{ player.totalAmountBet }}</p>
+      <p class="text-light">Status: {{ player.roundStatus }}</p>
+    </div>
+    <div class="d-flex">
+      <img
+        *ngFor="let card of player.cards"
+        class="card"
+        [src]="'assets/img/cards/' + card.value + '.png'"
+      />
+    </div>
+    <div class="controls">
+      <div *ngIf="isPlayersTurn" class="d-flex text-light">
+        Its your turn
+        <button
+          *ngIf="canCheck"
+          type="button"
+          class="btn btn-dark mt-2"
+          (click)="check()"
+        >
+          Check
+        </button>
+        <form *ngIf="canCheck && !betMustBeAllIn" [formGroup]="betForm">
+          <input
+            formControlName="amount"
+            [min]="game.minimumBetIncrement"
+            [max]="player.balance"
+            type="number"
+            class="form-control"
+          />
+          <button type="button" class="btn btn-dark mt-2" (click)="bet()">
+            Bet
+          </button>
+        </form>
+        <button
+          *ngIf="canCall"
+          type="button"
+          class="btn btn-dark mt-2"
+          (click)="call()"
+        >
+          Call
+        </button>
+        <form *ngIf="canCall && !betMustBeAllIn" [formGroup]="raiseForm">
+          <input
+            formControlName="amount"
+            [min]="game.minimumMoveAmount + game.minimumBetIncrement"
+            [max]="player.balance"
+            type="number"
+            class="form-control"
+          />
+          <button type="button" class="btn btn-dark mt-2" (click)="raise()">
+            Raise
+          </button>
+        </form>
+        <button
+          *ngIf="betMustBeAllIn"
+          type="button"
+          class="btn btn-dark mt-2"
+          (click)="allIn()"
+        >
+          All In
+        </button>
+        <button type="button" class="btn btn-dark mt-2" (click)="fold()">
+          Fold
+        </button>
+      </div>
+      <p *ngIf="!isPlayersTurn" class="text-light">Its not your turn</p>
+    </div>
   </div>
-</div>
+</ng-container>

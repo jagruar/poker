@@ -6,7 +6,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { JoinGameCommand } from 'src/app/models/commands/join-game.command';
 import { HttpService } from 'src/app/services/http.service';
 import { Router } from '@angular/router';
-
+import { LobbyHub } from 'src/app/services/lobby.hub';
 
 @Component({
   selector: 'app-game-list',
@@ -21,6 +21,7 @@ export class GameListComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private httpService: HttpService,
+    private lobbyHub: LobbyHub,
     private formBuilder: FormBuilder,
     private router: Router) { }
 
@@ -33,6 +34,11 @@ export class GameListComponent implements OnInit {
 
     this.http.get<GameListItem[]>(environment.api + 'games')
       .subscribe(x => this.gameList = x);
+
+    this.lobbyHub.startConnection();
+    this.lobbyHub.hubConnection.on('gamecreated', (game: GameListItem) => {
+      this.gameList.push(game);
+    })
   }
 
   submitJoin() {

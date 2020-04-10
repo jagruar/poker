@@ -18,6 +18,7 @@ namespace PokerClient.Models
         // Turn Processing
         public int SmallBlind { get; private set; }
         public int BigBlind { get; private set; }
+        public int MinimumMoveAmount { get; private set; }
         public int MinimumBetIncrement { get; private set; }
         public int DealerSeatNumber { get; set; }
         public int SmallBlindSeatNumber { get; set; }
@@ -53,15 +54,28 @@ namespace PokerClient.Models
 
             var player = new Player(name, buyIn, availableSeats[seatIndex]);
             Players.Add(player);
+            Players = Players.OrderBy(x => x.SeatNumber).ToList();
+
             return player.Id;
         }
 
         public void Start()
         {
-            Players = Players.OrderBy(x => x.SeatNumber).ToList();
-            DealerSeatNumber = new Random().Next(1, Players.Count);
-            StartRound();
 
+            DealerSeatNumber = Players.OrderBy(x => Guid.NewGuid()).First().SeatNumber;
+            StartRound();
+        }
+
+        public void StartRound()
+        {
+            Players.ForEach(x => x.TotalAmountBet = 0);
+            Players.ForEach(x => x.RoundStatus = PlayerRoundStatus.YetToBet);
+            BettingRound = BettingRound.Opening;
+            ProcessBlinds();
+            MinimumBetIncrement = BigBlind;
+            DealCards();
+            NextSeatNumber = NextPlayer(BigBlindSeatNumber).SeatNumber;
+            CalculateMinMoveAmount();
         }
 
         private void ProcessBlinds()
@@ -86,24 +100,34 @@ namespace PokerClient.Models
             ProcessBet(player, amount);
 
             int highestBet = Players.Max(x => x.AmountBet);
-            Player nextPlayer = Players.First(x => x.SeatNumber == NextSeatNumber);
 
             // All players folded - award money
             if (Players.Count(x => x.RoundStatus != PlayerRoundStatus.Folded) == 1)
             {
-                // end round, next player won
+                Players.ForEach(x => x.EndRound());
+                Pot = Players.Sum(x => x.TotalAmountBet);
+                var winner = Players.First(x => x.RoundStatus != PlayerRoundStatus.Folded);
+                winner.AwardWinnings(Pot);
+                StartRound();
             }
             // All players have matched the bet, folded or are all in and no players are big blind.
             else if (Players.All(x => 
-                (x.AmountBet == highestBet
+                (x.RoundStatus == PlayerRoundStatus.Checked) ||
+                ((x.AmountBet == highestBet
                 || x.RoundStatus == PlayerRoundStatus.Folded
-                || x.RoundStatus == PlayerRoundStatus.AllIn)
-                && x.RoundStatus != PlayerRoundStatus.BigBlind))
+                || x.RoundStatus == PlayerRoundStatus.AllIn) && x.RoundStatus != PlayerRoundStatus.BigBlind && highestBet != 0)))
             {
-                // move to next betting round
+                Players.ForEach(x => x.EndRound());
+                Pot = Players.Sum(x => x.TotalAmountBet);
+                NextSeatNumber = NextPlayer(DealerSeatNumber).SeatNumber;
+                BettingRound = (BettingRound)((int)BettingRound + 1);
+                MinimumMoveAmount = 0;
             }
             else
             {
+                Player nextPlayer = NextActivePlayer(player.SeatNumber);
+                NextSeatNumber = nextPlayer.SeatNumber;
+                CalculateMinMoveAmount();                
                 // stay in current betting round
             }
         }
@@ -123,19 +147,33 @@ namespace PokerClient.Models
             }
         }
 
+        private Player NextActivePlayer(int currentSeatNumber)
+        {
+            int nextSeatNumber = (currentSeatNumber + 1) % MaxPlayers;
+            Player nextPlayer = Players.FirstOrDefault(x => x.SeatNumber == nextSeatNumber);
+
+            if (nextPlayer != null && (nextPlayer.RoundStatus != PlayerRoundStatus.AllIn || nextPlayer.RoundStatus != PlayerRoundStatus.Folded))
+            {
+                return nextPlayer;
+            }
+            else
+            {
+                return NextPlayer(nextSeatNumber);
+            }
+        }
+
         private void ProcessBet(Player player, int? amount)
         {
-            int highestBet = Players.Max(x => x.AmountBet);
-
             if (amount == null)
             {
                 player.Fold();
                 return;
             }
 
+            int highestBet = Players.Max(x => x.AmountBet);
             int betAmount = amount.Value;
 
-            ValidationException.ThrowIfTrue(amount == 0 && player.AmountBet != highestBet, "Can not check, call or bet");
+            ValidationException.ThrowIfTrue(amount < MinimumMoveAmount, "Les than minimum move amount");
 
             if (betAmount == 0)
             {
@@ -143,12 +181,7 @@ namespace PokerClient.Models
                 return;
             }
 
-            // less than call, not going all in
-            ValidationException.ThrowIfTrue(
-                betAmount + player.AmountBet < highestBet && player.Balance < betAmount,
-                "can not bet less than current bet");
-
-            if (betAmount + player.AmountBet <= highestBet)
+            if (betAmount == MinimumMoveAmount)
             {
                 player.Call(betAmount);
                 return;
@@ -156,7 +189,7 @@ namespace PokerClient.Models
 
             // less than minimum bet, not going all in
             ValidationException.ThrowIfTrue(
-                betAmount + player.AmountBet < highestBet + MinimumBetIncrement && player.Balance < betAmount,
+                betAmount + player.AmountBet < highestBet + MinimumBetIncrement && player.Balance > betAmount,
                 "can not bet less than current bet");
 
             player.Bet(betAmount);
@@ -166,11 +199,19 @@ namespace PokerClient.Models
             MinimumBetIncrement = Math.Max(playersIncrement, MinimumBetIncrement); 
         }
 
-        public void StartRound()
+        private void CalculateMinMoveAmount()
         {
-            BettingRound = BettingRound.Opening;
-            ProcessBlinds();
-            DealCards();
+            Player player = Players.FirstOrDefault(x => x.SeatNumber == NextSeatNumber);
+            int highestBet = Players.Max(x => x.AmountBet);
+
+            if (player.AmountBet < highestBet)
+            {
+                MinimumMoveAmount = Math.Min(player.Balance, highestBet - player.AmountBet);
+            }
+            else
+            {
+                MinimumMoveAmount = 0;
+            }
         }
 
         private void DealCards()

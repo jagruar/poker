@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
+using PokerClient.Interfaces;
 
 namespace PokerClient.Web.Controllers
 {
@@ -23,46 +24,39 @@ namespace PokerClient.Web.Controllers
     public class GamesController : ControllerBase
     {
         // move to in memory cache
-        private static readonly List<Game> _games = new List<Game>();
+        private readonly IGameRepository _gameRepository;
 
         private readonly IMapper _mapper;
         private readonly IHubContext<GameHub> _gameHub;
+        private readonly IHubContext<LobbyHub> _lobbyHub;
 
         private string GameId => User.Claims.FirstOrDefault(c => c.Type == "game-id")?.Value;
         private string PlayerId => User.Claims.FirstOrDefault(c => c.Type == "player-id")?.Value;
 
         public GamesController(
             IMapper mapper,
-            IHubContext<GameHub> gameHub)
+            IHubContext<GameHub> gameHub,
+            IHubContext<LobbyHub> lobbyHub,
+            IGameRepository gameRepository)
         {
             _mapper = mapper;
             _gameHub = gameHub;
+            _lobbyHub = lobbyHub;
+            _gameRepository = gameRepository;
         }
 
         [HttpGet]
         [AllowAnonymous]
         public ActionResult<List<Game>> Get()
         {
-            var game = _mapper.Map<List<GameListItemDto>>(_games);
-            return Ok(game);
-        }
-
-        [HttpGet("mine")]
-        public ActionResult<List<Game>> GetForPlayer()
-        {
-            var game = _mapper.Map<List<GameListItemDto>>(_games);
+            var game = _mapper.Map<List<GameListItemDto>>(_gameRepository.GetGames());
             return Ok(game);
         }
 
         [HttpPost]
         [AllowAnonymous]
-        public ActionResult<GameTokenDto> CreateGame([FromBody] CreateGameCommand command)
+        public async Task<ActionResult<GameTokenDto>> CreateGame([FromBody] CreateGameCommand command)
         {
-            if (_games.Any(x => x.Name == command.Name))
-            {
-                return BadRequest("There is already a game with this name");
-            }
-
             Game game = new Game(
                 command.Name,
                 command.Password,
@@ -72,7 +66,9 @@ namespace PokerClient.Web.Controllers
                 command.SmallBlind.Value,
                 command.BigBlind.Value);
 
-            _games.Add(game);
+            _gameRepository.AddGame(game);
+
+            await _lobbyHub.Clients.All.SendAsync("gamecreated", _mapper.Map<GameListItemDto>(game));
 
             return Ok(GenerateToken(game.Id, game.Players.First().Id));
         }
@@ -82,7 +78,7 @@ namespace PokerClient.Web.Controllers
         [Route("{id}/players")]
         public async Task<ActionResult<GameTokenDto>> JoinGame([FromRoute] string id, [FromBody] JoinGameCommand command)
         {
-            Game game = _games.FirstOrDefault(x => x.Id == id);
+            Game game = _gameRepository.GetGame(id);
 
             if (game == null)
             {
@@ -105,9 +101,14 @@ namespace PokerClient.Web.Controllers
 
         [HttpPost]
         [Route("start")]
-        public async Task<ActionResult> StartGame() //[FromBody] StartGameCommand command)
+        public async Task<ActionResult> StartGame()
         {
-            Game game = GetGame();
+            if (PlayerId == null)
+            {
+                return Forbid();
+            }
+
+            Game game = _gameRepository.GetGame(GameId, PlayerId);
 
             if (game == null)
             {
@@ -118,27 +119,30 @@ namespace PokerClient.Web.Controllers
 
             await EmitGameStateAsync(game);
 
-            return Ok(game);
+            return Ok();
         }
 
         [HttpPost]
         [Route("play")]
-        public ActionResult MakeMove([FromBody] MakeMoveCommand command)
+        public async Task<ActionResult> MakeMove([FromBody] MakeMoveCommand command)
         {
-            Game game = GetGame();
+            if (PlayerId == null)
+            {
+                return Forbid();
+            }
+
+            Game game = _gameRepository.GetGame(GameId, PlayerId);
 
             if (game == null)
             {
                 return NotFound();
             }
 
-            //game.MakeMove(command.PlayerId, command.Amount);
+            game.MakeMove(PlayerId, command.Amount);
 
-            return Ok(game);
-        }
-        private Game GetGame()
-        {
-            return _games.FirstOrDefault(x => x.Id == GameId);         
+            await EmitGameStateAsync(game);
+
+            return Ok();
         }
 
         private async Task EmitGameStateAsync(Game game, string newPlayerId = null)
@@ -150,6 +154,7 @@ namespace PokerClient.Web.Controllers
                 await _gameHub.Clients.Groups(player.Id).SendAsync("gamestatechanged", gameDto);
             }
         }
+
         private GameTokenDto GenerateToken(string gameId, string playerId)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
